@@ -12,7 +12,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 @Component
 @Slf4j
@@ -25,6 +24,7 @@ public class PapagoClient {
         this.webClient = WebClient.builder()
                 .baseUrl(papagoConfig.getUrl())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, "charset=UTF-8")
                 .defaultHeader("X-Naver-Client-Id", papagoConfig.getClientId())
                 .defaultHeader("X-Naver-Client-Secret", papagoConfig.getClientSecret())
                 .build();
@@ -32,31 +32,23 @@ public class PapagoClient {
 
     public String translate(LanguageCode source, LanguageCode target, String text) {
         MultiValueMap<String, String> formData = makeForm(source.getCode(), target.getCode(), text);
-
-        Mono<JSONObject> async = request(formData);
-        async.subscribe(
-                result -> {
-                    log.info("Source {} -> Target {}", text, result.toString());
-//                    return (String) result.getJSONObject("message")
-//                        .getJSONObject("result")
-//                        .get("translatedText");
-                });
-        return "test";
+        JSONObject result = request(formData);
+        return (String) result.getJSONObject("message")
+                .getJSONObject("result")
+                .get("translatedText");
     }
 
-    private Mono<JSONObject> request(MultiValueMap<String, String> formData) {
+    private JSONObject request(MultiValueMap<String, String> formData) {
         return webClient.post()
-                .uri("/n2mt")
                 .body(BodyInserters.fromFormData(formData))
                 .exchangeToMono(
                         res ->  {
                             if (res.statusCode().equals(HttpStatus.OK)) {
-                                log.info(res.toString());
                                 return res.bodyToMono(JSONObject.class);
                             }
                             return null;
-                        }
-                );
+                        })
+                .block();
     }
 
     private MultiValueMap<String, String> makeForm(String src, String tar, String text) {
