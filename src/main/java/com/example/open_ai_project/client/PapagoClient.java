@@ -34,13 +34,14 @@ public class PapagoClient {
         MultiValueMap<String, String> formData = makeForm(source.getCode(), target.getCode(), text);
 
         Mono<JSONObject> async = request(formData);
-        String response = async.subscribe(
-                result -> (String) result.getJSONObject("message")
-                        .getJSONObject("result")
-                        .get("translatedText"));
-
-        log.info("Source {} -> Target {}", text, response);
-        return response;
+        async.subscribe(
+                result -> {
+                    log.info("Source {} -> Target {}", text, result.toString());
+//                    return (String) result.getJSONObject("message")
+//                        .getJSONObject("result")
+//                        .get("translatedText");
+                });
+        return "test";
     }
 
     private Mono<JSONObject> request(MultiValueMap<String, String> formData) {
